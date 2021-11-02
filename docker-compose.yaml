@@ -1,0 +1,56 @@
+version: "3"
+services:
+  expressvpn:
+    container_name: expressvpn
+    image: polkaned/expressvpn
+    environment:
+      - ACTIVATION_CODE={% your-activation-code %}
+      - SERVER={% LOCATION/ALIAS/COUNTRY %}
+      - PREFERRED_PROTOCOL={% protocol %}
+      - LIGHTWAY_CIPHER={% lightway-cipher %}
+    cap_add:
+      - NET_ADMIN
+    devices: 
+      - /dev/net/tun
+    stdin_open: true
+    tty: true
+    command: /bin/bash
+    privileged: true
+    restart: unless-stopped
+    ports:
+      - 8000:8000
+      - 9091:9091
+      - 51413:51413
+      - 51413:51413/udp
+    
+  transmission:
+    image: linuxserver/transmission
+    container_name: transmission
+    network_mode: service:expressvpn
+    depends_on:
+      - expressvpn
+    environment:
+      - PGID=1000
+      - PUID=1000
+      - TRANSMISSION_WEB_HOME=/transmission-web-control/
+      - TRANSMISSION_DOWNLOAD_DIR=/downloads
+      - MEDIA_DIR=/volume1/Downloads
+    volumes:
+      - ./transmission/config:/config
+      - /volume1/Downloads:/downloads
+    restart: unless-stopped
+
+  jerrysearch:
+    build: .
+    container_name: jerrysearch
+    network_mode: service:expressvpn
+    depends_on:
+      - expressvpn
+    environment:
+      - PGID=1000
+      - PUID=1000
+      - BASE_URL=https://apibay.org/
+      - HOME_BASE=http://0.0.0.0:9091/transmission/rpc
+      - API_PORT=8000
+      - MEDIA_DIR=/volume1/Downloads
+    restart: unless-stopped
